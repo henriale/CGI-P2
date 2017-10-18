@@ -3,7 +3,7 @@ from OpenGL.GLUT import *
 from OpenGL.GLU import *
 import logging as log
 
-ESCAPE = '\033'
+ESCAPE = b'\x1b'
 
 window = 0
 
@@ -18,6 +18,20 @@ OBS_Y = 0.0
 OBS_Z = 0.0
 
 DIRECTION = 1
+
+
+class Vertex:
+    def __init__(self, x, y, z):
+        self.x = x
+        self.y = y
+        self.z = z
+
+
+class RGB:
+    def __init__(self, r, g, b):
+        self.r = r
+        self.g = g
+        self.b = b
 
 
 def InitGL(Width, Height):
@@ -58,10 +72,6 @@ def specialKeyPressed(*args):
     if args[0] == GLUT_KEY_END:
         OBS_Z -= 0.5
 
-    log.info(OBS_X)
-    log.info(OBS_Y)
-    log.info(OBS_Z)
-
     glutPostRedisplay()
 
 
@@ -79,53 +89,77 @@ def DrawGLScene():
     glRotatef(Y_AXIS, 0.0, 1.0, 0.0)
     glRotatef(Z_AXIS, 0.0, 0.0, 1.0)
 
-    gluLookAt(OBS_X, OBS_Y, OBS_Z, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0)
+    #gluLookAt(OBS_X, OBS_Y, OBS_Z, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0)
+    gluLookAt(OBS_X, OBS_Y, OBS_Z, OBS_X+1, OBS_Y, OBS_Z, 0.0, 1.0, 0.0)
 
-    # Draw Cube (multiple quads)
-    glBegin(GL_QUADS)
+    drawCube()
 
-    glColor3f(0.0, 1.0, 0.0)
-    glVertex3f(1.0, 1.0, -1.0)
-    glVertex3f(-1.0, 1.0, -1.0)
-    glVertex3f(-1.0, 1.0, 1.0)
-    glVertex3f(1.0, 1.0, 1.0)
-
-    glColor3f(1.0, 0.0, 0.0)
-    glVertex3f(1.0, -1.0, 1.0)
-    glVertex3f(-1.0, -1.0, 1.0)
-    glVertex3f(-1.0, -1.0, -1.0)
-    glVertex3f(1.0, -1.0, -1.0)
-
-    glColor3f(0.0, 1.0, 0.0)
-    glVertex3f(1.0, 1.0, 1.0)
-    glVertex3f(-1.0, 1.0, 1.0)
-    glVertex3f(-1.0, -1.0, 1.0)
-    glVertex3f(1.0, -1.0, 1.0)
-
-    glColor3f(1.0, 1.0, 0.0)
-    glVertex3f(1.0, -1.0, -1.0)
-    glVertex3f(-1.0, -1.0, -1.0)
-    glVertex3f(-1.0, 1.0, -1.0)
-    glVertex3f(1.0, 1.0, -1.0)
-
-    glColor3f(0.0, 0.0, 1.0)
-    glVertex3f(-1.0, 1.0, 1.0)
-    glVertex3f(-1.0, 1.0, -1.0)
-    glVertex3f(-1.0, -1.0, -1.0)
-    glVertex3f(-1.0, -1.0, 1.0)
-
-    glColor3f(1.0, 0.0, 1.0)
-    glVertex3f(1.0, 1.0, -1.0)
-    glVertex3f(1.0, 1.0, 1.0)
-    glVertex3f(1.0, -1.0, 1.0)
-    glVertex3f(1.0, -1.0, -1.0)
-
-    glEnd()
-
-    # X_AXIS -= 0.30
-    # Z_AXIS -= 0.30
+    drawGround(sqm=1)
 
     glutSwapBuffers()
+
+
+def drawGround(sqm=10, size=1000, color=None):
+    if color is None:
+        color = RGB(1, 0, 1)
+
+    glColor3f(color.r, color.g, color.b)
+    glLineWidth(3)
+    glBegin(GL_LINES)
+
+    for z in range(1, size, sqm):
+        glVertex3f(-size, -0.1, z)
+        glVertex3f(size, -0.1, z)
+
+    for x in range(1, size, sqm):
+        glVertex3f(x, -0.1, -size)
+        glVertex3f(x, -0.1, size)
+
+    glEnd()
+    glLineWidth(1)
+
+
+def drawCube(size=2, position=None, color=None):
+    half = size / 2
+
+    if color is None:
+        color = RGB(0.2, 0.4, 0.6)
+
+    if position is None:
+        position = Vertex(0, half, 0)
+
+    glBegin(GL_QUADS)
+    glColor3f(color.r, color.g, color.b)
+    glVertex3f(position.x+half, position.y+half, position.z-half)
+    glVertex3f(position.x-half, position.y+half, position.z-half)
+    glVertex3f(position.x-half, position.y+half, position.z+half)
+    glVertex3f(position.x+half, position.y+half, position.z+half)
+    # side
+    glVertex3f(position.x+half, position.y-half, position.z+half)
+    glVertex3f(position.x-half, position.y-half, position.z+half)
+    glVertex3f(position.x-half, position.y-half, position.z-half)
+    glVertex3f(position.x+half, position.y-half, position.z-half)
+    # side
+    glVertex3f(position.x+half, position.y+half, position.z+half)
+    glVertex3f(position.x-half, position.y+half, position.z+half)
+    glVertex3f(position.x-half, position.y-half, position.z+half)
+    glVertex3f(position.x+half, position.y-half, position.z+half)
+    # side
+    glVertex3f(position.x+half, position.y-half, position.z-half)
+    glVertex3f(position.x-half, position.y-half, position.z-half)
+    glVertex3f(position.x-half, position.y+half, position.z-half)
+    glVertex3f(position.x+half, position.y+half, position.z-half)
+    # side
+    glVertex3f(position.x-half, position.y+half, position.z+half)
+    glVertex3f(position.x-half, position.y+half, position.z-half)
+    glVertex3f(position.x-half, position.y-half, position.z-half)
+    glVertex3f(position.x-half, position.y-half, position.z+half)
+    # side
+    glVertex3f(position.x+half, position.y+half, position.z-half)
+    glVertex3f(position.x+half, position.y+half, position.z+half)
+    glVertex3f(position.x+half, position.y-half, position.z+half)
+    glVertex3f(position.x+half, position.y-half, position.z-half)
+    glEnd()
 
 
 def main():
