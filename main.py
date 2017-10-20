@@ -1,7 +1,8 @@
 from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
-import logging as log
+import os
+import sys
 
 ESCAPE = b'\x1b'
 
@@ -61,15 +62,9 @@ def specialKeyPressed(*args):
         OBS_X += 0.5
 
     if args[0] == GLUT_KEY_UP:
-        OBS_Y += 0.5
-
-    if args[0] == GLUT_KEY_DOWN:
-        OBS_Y -= 0.5
-
-    if args[0] == GLUT_KEY_HOME:
         OBS_Z += 0.5
 
-    if args[0] == GLUT_KEY_END:
+    if args[0] == GLUT_KEY_DOWN:
         OBS_Z -= 0.5
 
     glutPostRedisplay()
@@ -88,11 +83,12 @@ def DrawGLScene():
     glRotatef(X_AXIS, 1.0, 0.0, 0.0)
     glRotatef(Y_AXIS, 0.0, 1.0, 0.0)
     glRotatef(Z_AXIS, 0.0, 0.0, 1.0)
+    Y_AXIS += 1
 
-    #gluLookAt(OBS_X, OBS_Y, OBS_Z, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0)
-    gluLookAt(OBS_X, OBS_Y, OBS_Z, OBS_X+1, OBS_Y, OBS_Z, 0.0, 1.0, 0.0)
+    # gluLookAt(OBS_X, OBS_Y, OBS_Z, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0)
+    gluLookAt(OBS_X, 1, OBS_Z, OBS_X, 1, OBS_Z + 1, 0.0, 1.0, 0.0)
 
-    drawCube()
+    drawCube(position=Vertex(2, 1, 2), size=2)
 
     drawGround(sqm=1)
 
@@ -101,19 +97,19 @@ def DrawGLScene():
 
 def drawGround(sqm=10, size=1000, color=None):
     if color is None:
-        color = RGB(1, 0, 1)
+        color = RGB(0.2, 0.1, 0.2)
 
     glColor3f(color.r, color.g, color.b)
-    glLineWidth(3)
+    glLineWidth(2)
     glBegin(GL_LINES)
 
-    for z in range(1, size, sqm):
-        glVertex3f(-size, -0.1, z)
-        glVertex3f(size, -0.1, z)
+    for z in range(0, size, sqm):
+        glVertex3f(0, -0.01, z)
+        glVertex3f(size, -0.01, z)
 
-    for x in range(1, size, sqm):
-        glVertex3f(x, -0.1, -size)
-        glVertex3f(x, -0.1, size)
+    for x in range(0, size, sqm):
+        glVertex3f(x, -0.01, 0)
+        glVertex3f(x, -0.01, size)
 
     glEnd()
     glLineWidth(1)
@@ -130,42 +126,50 @@ def drawCube(size=2, position=None, color=None):
 
     glBegin(GL_QUADS)
     glColor3f(color.r, color.g, color.b)
-    glVertex3f(position.x+half, position.y+half, position.z-half)
-    glVertex3f(position.x-half, position.y+half, position.z-half)
-    glVertex3f(position.x-half, position.y+half, position.z+half)
-    glVertex3f(position.x+half, position.y+half, position.z+half)
+    glVertex3f(position.x + half, position.y + half, position.z - half)
+    glVertex3f(position.x - half, position.y + half, position.z - half)
+    glVertex3f(position.x - half, position.y + half, position.z + half)
+    glVertex3f(position.x + half, position.y + half, position.z + half)
     # side
-    glVertex3f(position.x+half, position.y-half, position.z+half)
-    glVertex3f(position.x-half, position.y-half, position.z+half)
-    glVertex3f(position.x-half, position.y-half, position.z-half)
-    glVertex3f(position.x+half, position.y-half, position.z-half)
+    glVertex3f(position.x + half, position.y - half, position.z + half)
+    glVertex3f(position.x - half, position.y - half, position.z + half)
+    glVertex3f(position.x - half, position.y - half, position.z - half)
+    glVertex3f(position.x + half, position.y - half, position.z - half)
     # side
-    glVertex3f(position.x+half, position.y+half, position.z+half)
-    glVertex3f(position.x-half, position.y+half, position.z+half)
-    glVertex3f(position.x-half, position.y-half, position.z+half)
-    glVertex3f(position.x+half, position.y-half, position.z+half)
+    glVertex3f(position.x + half, position.y + half, position.z + half)
+    glVertex3f(position.x - half, position.y + half, position.z + half)
+    glVertex3f(position.x - half, position.y - half, position.z + half)
+    glVertex3f(position.x + half, position.y - half, position.z + half)
     # side
-    glVertex3f(position.x+half, position.y-half, position.z-half)
-    glVertex3f(position.x-half, position.y-half, position.z-half)
-    glVertex3f(position.x-half, position.y+half, position.z-half)
-    glVertex3f(position.x+half, position.y+half, position.z-half)
+    glVertex3f(position.x + half, position.y - half, position.z - half)
+    glVertex3f(position.x - half, position.y - half, position.z - half)
+    glVertex3f(position.x - half, position.y + half, position.z - half)
+    glVertex3f(position.x + half, position.y + half, position.z - half)
     # side
-    glVertex3f(position.x-half, position.y+half, position.z+half)
-    glVertex3f(position.x-half, position.y+half, position.z-half)
-    glVertex3f(position.x-half, position.y-half, position.z-half)
-    glVertex3f(position.x-half, position.y-half, position.z+half)
+    glVertex3f(position.x - half, position.y + half, position.z + half)
+    glVertex3f(position.x - half, position.y + half, position.z - half)
+    glVertex3f(position.x - half, position.y - half, position.z - half)
+    glVertex3f(position.x - half, position.y - half, position.z + half)
     # side
-    glVertex3f(position.x+half, position.y+half, position.z-half)
-    glVertex3f(position.x+half, position.y+half, position.z+half)
-    glVertex3f(position.x+half, position.y-half, position.z+half)
-    glVertex3f(position.x+half, position.y-half, position.z-half)
+    glVertex3f(position.x + half, position.y + half, position.z - half)
+    glVertex3f(position.x + half, position.y + half, position.z + half)
+    glVertex3f(position.x + half, position.y - half, position.z + half)
+    glVertex3f(position.x + half, position.y - half, position.z - half)
     glEnd()
 
 
 def main():
     global window
 
-    log.basicConfig(level=log.DEBUG)
+    file = open("./dataset/BR-01.txt")
+
+    for line in file.readlines()[1:]:
+        [max, line] = line.split('\t', 1)
+
+        for pos in line[1:-2].split(')('):
+            [a, b, c] = pos.split(',')
+            print(max, a, b, c)
+
     glutInit(sys.argv)
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH)
     glutInitWindowSize(640, 480)
@@ -179,6 +183,29 @@ def main():
     glutSpecialFunc(specialKeyPressed)
     InitGL(640, 480)
     glutMainLoop()
+
+
+def printText(x, y, message):
+    glDisable(GL_TEXTURE_2D)
+    glMatrixMode(GL_PROJECTION)
+    glPushMatrix()
+    glLoadIdentity()
+    gluOrtho2D(0.0, 640, 0.0, 480)
+    glMatrixMode(GL_MODELVIEW)
+    glPushMatrix()
+    glLoadIdentity()
+    glRasterPos2i(10, 10)
+
+    for c in message:
+        glColor3d(1.0, 0.0, 0.0)
+        var = fonts.name
+        # glutBitmapCharacter(GLUT_BITMAP_9_BY_15, c)
+
+    glMatrixMode(GL_PROJECTION)
+    glPopMatrix()
+    glMatrixMode(GL_MODELVIEW)
+    glPopMatrix()
+    glEnable(GL_TEXTURE_2D)
 
 
 if __name__ == "__main__":
