@@ -1,3 +1,4 @@
+import math
 from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
@@ -8,12 +9,14 @@ ESCAPE = b'\x1b'
 
 window = 0
 
+boxes = []
+
 # rotation
 X_AXIS = 0.0
 Y_AXIS = 0.0
 Z_AXIS = 0.0
 
-# rotation
+# camera
 OBS_X = 0.0
 OBS_Y = 0.0
 OBS_Z = 0.0
@@ -56,18 +59,30 @@ def specialKeyPressed(*args):
     global OBS_X, OBS_Y, OBS_Z
 
     if args[0] == GLUT_KEY_LEFT:
-        OBS_X -= 0.5
+        OBS_X += 5
 
     if args[0] == GLUT_KEY_RIGHT:
-        OBS_X += 0.5
+        OBS_X -= 5
 
     if args[0] == GLUT_KEY_UP:
-        OBS_Z += 0.5
+        OBS_Z += 5
 
     if args[0] == GLUT_KEY_DOWN:
-        OBS_Z -= 0.5
+        OBS_Z -= 5
 
     glutPostRedisplay()
+
+
+def drawBoxes():
+    i = 0
+
+    if not boxes or not boxes[i]:
+        return
+
+    (x, z) = boxes[0].pop()
+    print(x, z)
+    drawCube(position=Vertex(x, 1, z), size=10)
+    pass
 
 
 def DrawGLScene():
@@ -78,17 +93,20 @@ def DrawGLScene():
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
     glLoadIdentity()
-    glTranslatef(0.0, 0.0, -6.0)
+    glTranslatef(0.0, -10.0, -60.0)
 
     glRotatef(X_AXIS, 1.0, 0.0, 0.0)
     glRotatef(Y_AXIS, 0.0, 1.0, 0.0)
     glRotatef(Z_AXIS, 0.0, 0.0, 1.0)
-    Y_AXIS += 1
 
-    # gluLookAt(OBS_X, OBS_Y, OBS_Z, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0)
     gluLookAt(OBS_X, 1, OBS_Z, OBS_X, 1, OBS_Z + 1, 0.0, 1.0, 0.0)
 
+    glPushMatrix()
     drawCube(position=Vertex(2, 1, 2), size=2)
+    glPopMatrix()
+
+    drawBoxes()
+
 
     drawGround(sqm=1)
 
@@ -158,24 +176,31 @@ def drawCube(size=2, position=None, color=None):
     glEnd()
 
 
+# TODO
+def normalize_dataset(bxs, max_x, max_y, min_x, min_y):
+    # print(bxs, max_x, max_y, min_x, min_y)
+
+    # print(len(bxs))
+    # sys.exit(1)
+
+    return bxs
+
+
 def main():
     global window
 
     file = open("./dataset/BR-01.txt")
 
-    for line in file.readlines()[1:]:
-        [max, line] = line.split('\t', 1)
+    moves = normalize_dataset(*read_dataset(file))
 
-        for pos in line[1:-2].split(')('):
-            [a, b, c] = pos.split(',')
-            print(max, a, b, c)
+    boxes.append(moves)
 
     glutInit(sys.argv)
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH)
-    glutInitWindowSize(640, 480)
+    glutInitWindowSize(640, 540)
     glutInitWindowPosition(200, 200)
 
-    window = glutCreateWindow('OpenGL Python Cube')
+    window = glutCreateWindow('CGI-P2')
 
     glutDisplayFunc(DrawGLScene)
     glutIdleFunc(DrawGLScene)
@@ -183,6 +208,39 @@ def main():
     glutSpecialFunc(specialKeyPressed)
     InitGL(640, 480)
     glutMainLoop()
+
+
+def read_dataset(file):
+    bxs = []
+    max_x = 0
+    max_y = 0
+    min_x = math.inf
+    min_y = math.inf
+    for line in file.readlines()[1:]:
+        [line_max, line] = line.split('\t', 1)
+
+        for pos in line[1:-2].split(')('):
+            [x, y, time] = map(int, pos.split(','))
+
+            if x > max_x:
+                max_x = x
+
+            if y > max_y:
+                max_y = y
+
+            if x < min_x:
+                min_x = x
+
+            if y < min_y:
+                min_y = y
+
+            moves = []
+            if (x, y) not in moves:
+                moves.append((x, y))
+
+            bxs.append(*moves)
+
+    return bxs, max_x, max_y, min_x, min_y
 
 
 def printText(x, y, message):
