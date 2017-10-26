@@ -8,7 +8,7 @@ import sys
 ESCAPE = b'\x1b'
 
 window = 0
-
+scenario_size = 100
 boxes = []
 
 # rotation
@@ -80,7 +80,7 @@ def drawBoxes():
         return
 
     (x, z) = boxes[0].pop()
-    print(x, z)
+    # print(x, z)
     drawCube(position=Vertex(x, 1, z), size=10)
     pass
 
@@ -89,11 +89,12 @@ def DrawGLScene():
     global X_AXIS, Y_AXIS, Z_AXIS
     global OBS_X, OBS_Y, OBS_Z
     global DIRECTION
+    global scenario_size
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
     glLoadIdentity()
-    glTranslatef(0.0, -10.0, -60.0)
+    glTranslatef(0.0, -5.0, -30.0)
 
     glRotatef(X_AXIS, 1.0, 0.0, 0.0)
     glRotatef(Y_AXIS, 0.0, 1.0, 0.0)
@@ -107,8 +108,7 @@ def DrawGLScene():
 
     drawBoxes()
 
-
-    drawGround(sqm=1)
+    drawGround(sqm=1, size=scenario_size)
 
     glutSwapBuffers()
 
@@ -177,11 +177,28 @@ def drawCube(size=2, position=None, color=None):
 
 
 # TODO
-def normalize_dataset(bxs, max_x, max_y, min_x, min_y):
-    # print(bxs, max_x, max_y, min_x, min_y)
+def normalize_dataset(bxs, max_x, max_z, min_x, min_z):
+    global scenario_size
+    ratio_x = (scenario_size - 0) / (max_x - min_x)
+    ratio_z = (scenario_size - 0) / (max_z - min_z)
 
-    # print(len(bxs))
-    # sys.exit(1)
+    normalized_bxs = list(
+        map(
+            lambda moves: list(map(
+                lambda t: (t[0] * ratio_x - (ratio_x * min_x), t[1] * ratio_z - (ratio_z * min_z)),
+                moves
+            )),
+            bxs
+        )
+    )
+
+    print(len(bxs))
+    print(max_x, max_z, min_x, min_z)
+    print(ratio_x, ratio_z)
+    print(normalized_bxs)
+    print(bxs)
+
+    sys.exit(1)
 
     return bxs
 
@@ -213,34 +230,34 @@ def main():
 def read_dataset(file):
     bxs = []
     max_x = 0
-    max_y = 0
+    max_z = 0
     min_x = math.inf
-    min_y = math.inf
+    min_z = math.inf
     for line in file.readlines()[1:]:
         [line_max, line] = line.split('\t', 1)
 
+        moves = []
         for pos in line[1:-2].split(')('):
-            [x, y, time] = map(int, pos.split(','))
+            [x, z, time] = map(float, pos.split(','))
 
             if x > max_x:
                 max_x = x
 
-            if y > max_y:
-                max_y = y
+            if z > max_z:
+                max_z = z
 
             if x < min_x:
                 min_x = x
 
-            if y < min_y:
-                min_y = y
+            if z < min_z:
+                min_z = z
 
-            moves = []
-            if (x, y) not in moves:
-                moves.append((x, y))
+            if (x, z) not in moves:
+                moves.append((x, z))
 
-            bxs.append(*moves)
+        bxs.append(moves)
 
-    return bxs, max_x, max_y, min_x, min_y
+    return bxs, max_x, max_z, min_x, min_z
 
 
 def printText(x, y, message):
