@@ -4,12 +4,13 @@ from OpenGL.GLUT import *
 from OpenGL.GLU import *
 import os
 import sys
+import time
 
 ESCAPE = b'\x1b'
 
 window = 0
-scenario_size = 100
-boxes = []
+scenario_size = 20
+bullets = []
 
 # rotation
 X_AXIS = 0.0
@@ -23,7 +24,6 @@ OBS_Z = 0.0
 
 DIRECTION = 1
 
-
 class Vertex:
     def __init__(self, x, y, z):
         self.x = x
@@ -36,6 +36,28 @@ class RGB:
         self.r = r
         self.g = g
         self.b = b
+
+
+def main():
+    global window, bullets
+
+    file = open("./dataset/BR-01.txt")
+
+    bullets = normalize_dataset(*read_dataset(file))
+
+    glutInit(sys.argv)
+    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH)
+    glutInitWindowSize(640, 540)
+    glutInitWindowPosition(200, 200)
+
+    window = glutCreateWindow('CGI-P2')
+
+    glutDisplayFunc(DrawGLScene)
+    glutIdleFunc(DrawGLScene)
+    glutKeyboardFunc(keyPressed)
+    glutSpecialFunc(specialKeyPressed)
+    InitGL(640, 480)
+    glutMainLoop()
 
 
 def InitGL(Width, Height):
@@ -73,18 +95,6 @@ def specialKeyPressed(*args):
     glutPostRedisplay()
 
 
-def drawBoxes():
-    i = 0
-
-    if not boxes or not boxes[i]:
-        return
-
-    (x, z) = boxes[0].pop()
-    # print(x, z)
-    drawCube(position=Vertex(x, 1, z), size=10)
-    pass
-
-
 def DrawGLScene():
     global X_AXIS, Y_AXIS, Z_AXIS
     global OBS_X, OBS_Y, OBS_Z
@@ -103,10 +113,10 @@ def DrawGLScene():
     gluLookAt(OBS_X, 1, OBS_Z, OBS_X, 1, OBS_Z + 1, 0.0, 1.0, 0.0)
 
     glPushMatrix()
-    drawCube(position=Vertex(2, 1, 2), size=2)
+    drawMainCharacter(position=Vertex(2, 1, 2), size=2)
     glPopMatrix()
 
-    drawBoxes()
+    drawBullets()
 
     drawGround(sqm=1, size=scenario_size)
 
@@ -133,7 +143,19 @@ def drawGround(sqm=10, size=1000, color=None):
     glLineWidth(1)
 
 
-def drawCube(size=2, position=None, color=None):
+def drawBullets():
+    if not bullets:
+        return
+
+    for box in bullets:
+        if not box:
+            continue
+        print(box)
+        (x, z) = box.pop()
+        drawMainCharacter(position=Vertex(x, 1, z), size=1)
+
+
+def drawMainCharacter(size=2, position=None, color=None):
     half = size / 2
 
     if color is None:
@@ -176,55 +198,23 @@ def drawCube(size=2, position=None, color=None):
     glEnd()
 
 
-# TODO
-def normalize_dataset(bxs, max_x, max_z, min_x, min_z):
+def normalize_dataset(data, max_x, max_z, min_x, min_z):
     global scenario_size
     ratio_x = (scenario_size - 0) / (max_x - min_x)
     ratio_z = (scenario_size - 0) / (max_z - min_z)
 
-    normalized_bxs = list(
-        map(
-            lambda moves: list(map(
-                lambda t: (t[0] * ratio_x - (ratio_x * min_x), t[1] * ratio_z - (ratio_z * min_z)),
-                moves
-            )),
-            bxs
-        )
-    )
+    normalized_items = list(map(
+        lambda positions: list(map(
+            lambda position: (
+                position[0] * ratio_x - (ratio_x * min_x),
+                position[1] * ratio_z - (ratio_z * min_z)
+            ),
+            positions
+        )),
+        data
+    ))
 
-    print(len(bxs))
-    print(max_x, max_z, min_x, min_z)
-    print(ratio_x, ratio_z)
-    print(normalized_bxs)
-    print(bxs)
-
-    sys.exit(1)
-
-    return bxs
-
-
-def main():
-    global window
-
-    file = open("./dataset/BR-01.txt")
-
-    moves = normalize_dataset(*read_dataset(file))
-
-    boxes.append(moves)
-
-    glutInit(sys.argv)
-    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH)
-    glutInitWindowSize(640, 540)
-    glutInitWindowPosition(200, 200)
-
-    window = glutCreateWindow('CGI-P2')
-
-    glutDisplayFunc(DrawGLScene)
-    glutIdleFunc(DrawGLScene)
-    glutKeyboardFunc(keyPressed)
-    glutSpecialFunc(specialKeyPressed)
-    InitGL(640, 480)
-    glutMainLoop()
+    return normalized_items
 
 
 def read_dataset(file):
