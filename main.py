@@ -9,18 +9,24 @@ import time
 ESCAPE = b'\x1b'
 
 window = 0
-scenario_size = 20
+scenario_size = 60
 bullets = []
+elapsed_time = 0
 
 # rotation
 X_AXIS = 0.0
-Y_AXIS = 0.0
 Z_AXIS = 0.0
+Y_AXIS = 0.0
 
+MAIN_X = 0
+MAIN_Y = 0
+MAIN_Z = 0
 # camera
 OBS_X = 0.0
 OBS_Y = 0.0
 OBS_Z = 0.0
+
+
 
 DIRECTION = 1
 
@@ -39,7 +45,7 @@ class RGB:
 
 
 def main():
-    global window, bullets
+    global window, bullets, elapsed_time
 
     file = open("./dataset/BR-01.txt")
 
@@ -52,6 +58,7 @@ def main():
 
     window = glutCreateWindow('CGI-P2')
 
+    elapsed_time = glutGet(GLUT_ELAPSED_TIME)
     glutDisplayFunc(DrawGLScene)
     glutIdleFunc(DrawGLScene)
     glutKeyboardFunc(keyPressed)
@@ -78,43 +85,43 @@ def keyPressed(*args):
 
 
 def specialKeyPressed(*args):
-    global OBS_X, OBS_Y, OBS_Z
+    global MAIN_X, MAIN_Y, MAIN_Z, X_AXIS, Z_AXIS, Y_AXIS
 
     if args[0] == GLUT_KEY_LEFT:
-        OBS_X += 5
+        Y_AXIS = (Y_AXIS + 45) % 360
 
     if args[0] == GLUT_KEY_RIGHT:
-        OBS_X -= 5
+        Y_AXIS = (Y_AXIS - 45) % 360
 
     if args[0] == GLUT_KEY_UP:
-        OBS_Z += 5
+        MAIN_Z += 1
 
     if args[0] == GLUT_KEY_DOWN:
-        OBS_Z -= 5
+        MAIN_Z -= 1
 
     glutPostRedisplay()
 
 
 def DrawGLScene():
-    global X_AXIS, Y_AXIS, Z_AXIS
     global OBS_X, OBS_Y, OBS_Z
     global DIRECTION
     global scenario_size
+    global elapsed_time
+    global MAIN_X, MAIN_Z
+    global X_AXIS, Y_AXIS, Z_AXIS
+
+    curr_time = glutGet(GLUT_ELAPSED_TIME)
+    delta_time = curr_time - elapsed_time
+    elapsed_time = curr_time
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
     glLoadIdentity()
     glTranslatef(0.0, -5.0, -30.0)
 
-    glRotatef(X_AXIS, 1.0, 0.0, 0.0)
-    glRotatef(Y_AXIS, 0.0, 1.0, 0.0)
-    glRotatef(Z_AXIS, 0.0, 0.0, 1.0)
-
     gluLookAt(OBS_X, 1, OBS_Z, OBS_X, 1, OBS_Z + 1, 0.0, 1.0, 0.0)
 
-    glPushMatrix()
-    drawMainCharacter(position=Vertex(2, 1, 2), size=2)
-    glPopMatrix()
+    drawMainCharacter(position=Vertex(MAIN_X, 1, MAIN_Z), size=2)
 
     drawBullets()
 
@@ -143,19 +150,42 @@ def drawGround(sqm=10, size=1000, color=None):
     glLineWidth(1)
 
 
+
 def drawBullets():
+    global bullets
+
     if not bullets:
         return
 
-    for box in bullets:
-        if not box:
-            continue
-        print(box)
-        (x, z) = box.pop()
-        drawMainCharacter(position=Vertex(x, 1, z), size=1)
+    if not bullets[0]:
+        del bullets[0]
+        return drawBullets()
+
+    (x, z) = bullets[0].pop()
+    drawBullet(position=Vertex(x, 1, z), size=1)
 
 
 def drawMainCharacter(size=2, position=None, color=None):
+    global X_AXIS, Z_AXIS, Y_AXIS
+    half = size / 2
+
+    if color is None:
+        color = RGB(0.8, 0.3, 0.3)
+
+    if position is None:
+        position = Vertex(0, half, 0)
+
+    glPushMatrix()
+
+    glRotatef(Y_AXIS, 0.0, 1.0, 0.0)
+    glTranslatef(position.x, position.y, position.z)
+    glColor3f(color.r, color.g, color.b)
+    glutSolidCone(half, 5, 50, 50)
+
+    glPopMatrix()
+
+
+def drawBullet(size=2, position=None, color=None):
     half = size / 2
 
     if color is None:
@@ -164,38 +194,11 @@ def drawMainCharacter(size=2, position=None, color=None):
     if position is None:
         position = Vertex(0, half, 0)
 
-    glBegin(GL_QUADS)
+    glPushMatrix()
+    glTranslatef(position.x, position.y, position.z)
     glColor3f(color.r, color.g, color.b)
-    glVertex3f(position.x + half, position.y + half, position.z - half)
-    glVertex3f(position.x - half, position.y + half, position.z - half)
-    glVertex3f(position.x - half, position.y + half, position.z + half)
-    glVertex3f(position.x + half, position.y + half, position.z + half)
-    # side
-    glVertex3f(position.x + half, position.y - half, position.z + half)
-    glVertex3f(position.x - half, position.y - half, position.z + half)
-    glVertex3f(position.x - half, position.y - half, position.z - half)
-    glVertex3f(position.x + half, position.y - half, position.z - half)
-    # side
-    glVertex3f(position.x + half, position.y + half, position.z + half)
-    glVertex3f(position.x - half, position.y + half, position.z + half)
-    glVertex3f(position.x - half, position.y - half, position.z + half)
-    glVertex3f(position.x + half, position.y - half, position.z + half)
-    # side
-    glVertex3f(position.x + half, position.y - half, position.z - half)
-    glVertex3f(position.x - half, position.y - half, position.z - half)
-    glVertex3f(position.x - half, position.y + half, position.z - half)
-    glVertex3f(position.x + half, position.y + half, position.z - half)
-    # side
-    glVertex3f(position.x - half, position.y + half, position.z + half)
-    glVertex3f(position.x - half, position.y + half, position.z - half)
-    glVertex3f(position.x - half, position.y - half, position.z - half)
-    glVertex3f(position.x - half, position.y - half, position.z + half)
-    # side
-    glVertex3f(position.x + half, position.y + half, position.z - half)
-    glVertex3f(position.x + half, position.y + half, position.z + half)
-    glVertex3f(position.x + half, position.y - half, position.z + half)
-    glVertex3f(position.x + half, position.y - half, position.z - half)
-    glEnd()
+    glutSolidSphere(half, 50, 50)
+    glPopMatrix()
 
 
 def normalize_dataset(data, max_x, max_z, min_x, min_z):
