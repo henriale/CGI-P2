@@ -2,29 +2,25 @@ import math
 from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
-import os
 import sys
-import time
 
 ESCAPE = b'\x1b'
 
-window = 0
-scenario_size = 60
-bullets = []
-score = 0
-elapsed_time = 0
+TEAPOTS = []
+MIN_SCORE = 3
+SCENARIO_SIZE = 60
+CURRENT_SCORE = 0
+CURRENT_LEVEL = 0
+GAME_OVER = False
 
-# rotation
 X_AXIS = 0.0
 Z_AXIS = 0.0
 Y_AXIS = 0.0
 
-obs_x = 0
-obs_y = 0
-obs_z = 0
+AVATAR_X = 0
+AVATAR_Y = 1
+AVATAR_Z = 0
 
-level = 0
-game_over = False
 
 class Vertex:
     def __init__(self, x, y, z):
@@ -41,38 +37,36 @@ class RGB:
 
 
 def main():
-    global window, elapsed_time
+    init_window(width=640, height=480)
 
     next_level()
 
-    glutInit(sys.argv)
-    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH)
-    glutInitWindowSize(640, 540)
-    glutInitWindowPosition(200, 200)
-
-    window = glutCreateWindow('CGI-P2')
-
-    elapsed_time = glutGet(GLUT_ELAPSED_TIME)
     glutDisplayFunc(draw_scene)
     glutIdleFunc(draw_scene)
+
     glutKeyboardFunc(key_pressed)
     glutSpecialFunc(special_key_pressed)
 
-    init(640, 480)
     glutMainLoop()
 
 
 def next_level():
-    global bullets, score, level
+    global TEAPOTS, CURRENT_SCORE, CURRENT_LEVEL
 
-    score = 0
-    level += 1
+    CURRENT_SCORE = 0
+    CURRENT_LEVEL = (CURRENT_LEVEL % 29) + 1
 
-    file = open("./dataset/%02d.txt" % level)
-    bullets = normalize_dataset(*read_dataset(file))
+    file = open("./dataset/%02d.txt" % CURRENT_LEVEL)
+    TEAPOTS = normalize_data_set(*read_data_set(file))
 
 
-def init(width, height):
+def init_window(width, height):
+    glutInit(sys.argv)
+    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH)
+    glutInitWindowSize(width, height)
+    glutInitWindowPosition(200, 200)
+    glutCreateWindow('CGI-P2')
+
     glClearColor(0.0, 0.0, 0.0, 0.0)
     glClearDepth(1.0)
     glDepthFunc(GL_LESS)
@@ -85,74 +79,77 @@ def init(width, height):
 
 
 def key_pressed(*args):
-    global bullets,score,obs_x,obs_y,obs_z,level,game_over
-
     if args[0] == b'r':
-        bullets = []
-        score = 0
-        obs_x = 0
-        obs_y = 0
-        obs_z = 0
-        level = 0
-        game_over = False
+        reset_game()
         next_level()
 
     if args[0] == ESCAPE:
         sys.exit()
 
 
+def reset_game():
+    global TEAPOTS, CURRENT_SCORE, CURRENT_LEVEL, GAME_OVER
+    global AVATAR_X, AVATAR_Y, AVATAR_Z
+
+    AVATAR_X = 0
+    AVATAR_Y = 1
+    AVATAR_Z = 0
+    TEAPOTS = []
+    GAME_OVER = False
+    CURRENT_SCORE = 0
+    CURRENT_LEVEL = 0
+
+
 def special_key_pressed(*args):
-    global obs_x, obs_y, obs_z, X_AXIS, Z_AXIS, Y_AXIS
+    global AVATAR_X, AVATAR_Y, AVATAR_Z
 
     if args[0] == GLUT_KEY_LEFT:
-        #Y_AXIS = (Y_AXIS + 45) % 360
-        obs_x += 1
+        AVATAR_X += 1
 
     if args[0] == GLUT_KEY_RIGHT:
-        #Y_AXIS = (Y_AXIS - 45) % 360
-        obs_x -= 1
+        AVATAR_X -= 1
 
     if args[0] == GLUT_KEY_UP:
-        obs_z += 1
+        AVATAR_Z += 1
 
     if args[0] == GLUT_KEY_DOWN:
-        obs_z -= 1
+        AVATAR_Z -= 1
 
     glutPostRedisplay()
 
 
 def draw_scene():
-    global scenario_size
-    global elapsed_time
-    global obs_x, obs_z
-    global X_AXIS, Y_AXIS, Z_AXIS
-
-    curr_time = glutGet(GLUT_ELAPSED_TIME)
-    delta_time = curr_time - elapsed_time
-    elapsed_time = curr_time
+    global SCENARIO_SIZE
+    global AVATAR_X, AVATAR_Z, AVATAR_Y
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
     glLoadIdentity()
-    glRotatef(-Y_AXIS, 0.0, 1.0, 0.0)
-    gluLookAt(obs_x - 20, 10, obs_z - 20, obs_x, 1, obs_z, 0.0, 1.0, 0.0)
+    gluLookAt(
+        AVATAR_X - 20, 10, AVATAR_Z - 20,  # camera position
+        AVATAR_X, 1, AVATAR_Z,  # target position
+        0.0, 1.0, 0.0  # up vector
+    )
 
-    printText(obs_x, 2, obs_z, 'Teapots left: %d' % len(bullets))
-    printText(obs_x, 3, obs_z, 'Score: %s' % score)
-    printText(obs_x, 4, obs_z, 'Level: %02d' % level)
+    printText(AVATAR_X, AVATAR_Y + 1, AVATAR_Z, 'Teapots left: %d' % len(TEAPOTS))
+    printText(AVATAR_X, AVATAR_Y + 2, AVATAR_Z, 'Score: %02d' % CURRENT_SCORE)
+    printText(AVATAR_X, AVATAR_Y + 3, AVATAR_Z, 'Level: %02d' % CURRENT_LEVEL)
 
-    draw_main_character(position=Vertex(obs_x, 1, obs_z), size=2)
-
-    draw_bullets()
-
-    draw_ground(sqm=1, size=scenario_size)
+    draw_avatar(size=2)
+    draw_teapots()
+    draw_ground(sqm=1)
 
     glutSwapBuffers()
 
 
-def draw_ground(sqm=10, size=1000, color=None):
+def draw_ground(sqm=10, size=None, color=None):
+    global SCENARIO_SIZE
+
     if color is None:
         color = RGB(0.2, 0.1, 0.2)
+
+    if size is None:
+        size = SCENARIO_SIZE
 
     glColor3f(color.r, color.g, color.b)
     glLineWidth(2)
@@ -170,49 +167,48 @@ def draw_ground(sqm=10, size=1000, color=None):
     glLineWidth(1)
 
 
-def draw_bullets():
-    global bullets, score, obs_x, obs_z, game_over
+def draw_teapots():
+    global MIN_SCORE, CURRENT_SCORE, GAME_OVER
+    global AVATAR_X, AVATAR_Z, TEAPOTS
 
-    if not bullets:
-        if score < 3:
-            game_over = True
+    if not TEAPOTS:
+        if CURRENT_SCORE < MIN_SCORE:
+            GAME_OVER = True
 
-        if game_over:
-            printText(obs_x, 5, obs_z, 'GAME OVER!')
+        if GAME_OVER:
+            printText(AVATAR_X, 5, AVATAR_Z, 'GAME OVER!')
             return
         else:
             next_level()
 
-    if not bullets[0]:
-        del bullets[0]
-        return draw_bullets()
+    if not TEAPOTS[0]:
+        del TEAPOTS[0]
+        return draw_teapots()
 
-    (x, z) = bullets[0].pop()
+    (x, z) = TEAPOTS[0].pop()
 
-    diffX = obs_x - x
-    diffZ = obs_z - z
+    diff_x = AVATAR_X - x
+    diff_z = AVATAR_Z - z
 
-    if abs(diffX) < 1 or abs(diffZ) < 1:
-        print(abs(diffX), abs(diffZ))
-        score += 1
-        del bullets[0]
+    if abs(diff_x) < 1 or abs(diff_z) < 1:
+        CURRENT_SCORE += 1
+        del TEAPOTS[0]
 
-    draw_bullet(position=Vertex(x, 1, z), size=1)
+    draw_teapot(position=Vertex(x, 1, z), size=1)
 
 
-def draw_main_character(size=2, position=None, color=None):
-    global X_AXIS, Z_AXIS, Y_AXIS
+def draw_avatar(size=2, position=None, color=None):
+    global AVATAR_X, AVATAR_Y, AVATAR_Z
     half = size / 2
 
     if color is None:
         color = RGB(0.8, 0.3, 0.3)
 
     if position is None:
-        position = Vertex(0, half, 0)
+        position = Vertex(AVATAR_X, AVATAR_Y, AVATAR_Z)
 
     glPushMatrix()
 
-    glRotatef(Y_AXIS, 0.0, 1.0, 0.0)
     glTranslatef(position.x, position.y, position.z)
     glColor3f(color.r, color.g, color.b)
     glutSolidSphere(half, 5, 50, 50)
@@ -220,7 +216,7 @@ def draw_main_character(size=2, position=None, color=None):
     glPopMatrix()
 
 
-def draw_bullet(size=2, position=None, color=None):
+def draw_teapot(size=2, position=None, color=None):
     half = size / 2
 
     if color is None:
@@ -236,10 +232,10 @@ def draw_bullet(size=2, position=None, color=None):
     glPopMatrix()
 
 
-def normalize_dataset(data, max_x, max_z, min_x, min_z):
-    global scenario_size
-    ratio_x = (scenario_size - 0) / (max_x - min_x)
-    ratio_z = (scenario_size - 0) / (max_z - min_z)
+def normalize_data_set(data, max_x, max_z, min_x, min_z):
+    global SCENARIO_SIZE
+    ratio_x = (SCENARIO_SIZE - 0) / (max_x - min_x)
+    ratio_z = (SCENARIO_SIZE - 0) / (max_z - min_z)
 
     normalized_items = list(map(
         lambda positions: list(map(
@@ -255,16 +251,17 @@ def normalize_dataset(data, max_x, max_z, min_x, min_z):
     return normalized_items
 
 
-def read_dataset(file):
-    bxs = []
+def read_data_set(file):
+    items = []
     max_x = 0
     max_z = 0
     min_x = math.inf
     min_z = math.inf
+
     for line in file.readlines()[1:]:
         [line_max, line] = line.split('\t', 1)
 
-        moves = []
+        positions = []
         for pos in line[1:-2].split(')('):
             [x, z, time] = map(float, pos.split(','))
 
@@ -280,12 +277,12 @@ def read_dataset(file):
             if z < min_z:
                 min_z = z
 
-            if (x, z) not in moves:
-                moves.append((x, z))
+            if (x, z) not in positions:
+                positions.append((x, z))
 
-        bxs.append(moves)
+        items.append(positions)
 
-    return bxs, max_x, max_z, min_x, min_z
+    return items, max_x, max_z, min_x, min_z
 
 
 def printText(x, y, z, message):
